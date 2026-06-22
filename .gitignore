@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Python bytecode / venvs only — keep benchmark results (JSON + logs) committed
+results/raw/_local_only/
+
+# OS
+.DS_Store
+Thumbs.db

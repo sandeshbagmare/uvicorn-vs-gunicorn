@@ -1,0 +1,11 @@
+# --- Web framework + ASGI server ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0      # [standard] pulls uvloop+httptools on Linux/Mac (uvloop is skipped on Windows)
+gunicorn==23.0.0 ; sys_platform != "win32"   # Gunicorn is Unix-only (needs fcntl); pip skips it on Windows
+
+# --- Load testing / benchmarking client ---
+httpx==0.28.1                  # async HTTP client used by the custom load tester
+rich==13.9.4                   # pretty tables in the console
+
+# --- Optional: charts for the results (the plot script degrades gracefully if missing) ---
+matplotlib==3.10.0

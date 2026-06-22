@@ -1,0 +1,160 @@
+Platform: Windows | CPUs: 8 | worker count for multi-worker rows: 4
+Project root: C:\Users\sande\OneDrive\Desktop\uvicorn vs gunicorn\uvicornvsgunicorn
+
+=== Booting: uvicorn-1worker ===
+    C:\Users\sande\AppData\Local\Programs\Python\Python313\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 --log-level warning
+    healthy. running workloads...
+
+          uvicorn-1worker__root           
+         (http://127.0.0.1:8000/)         
++----------------------------------------+
+| metric               | value           |
+|----------------------+-----------------|
+| requests             | 2000            |
+| concurrency          | 200             |
+| wall time            | 5.917 s         |
+| throughput           | 338.0 req/s     |
+| ok / errors          | 2000 / 0        |
+| latency p50          | 373.56 ms       |
+| latency p95          | 1780.64 ms      |
+| latency p99          | 2911.92 ms      |
+| latency max          | 5833.95 ms      |
+| distinct worker PIDs | 1  {2788: 2000} |
++----------------------------------------+
+        uvicorn-1worker__async-io         
+     (http://127.0.0.1:8000/async-io)     
++----------------------------------------+
+| metric               | value           |
+|----------------------+-----------------|
+| requests             | 2000            |
+| concurrency          | 200             |
+| wall time            | 18.008 s        |
+| throughput           | 111.1 req/s     |
+| ok / errors          | 2000 / 0        |
+| latency p50          | 1137.14 ms      |
+| latency p95          | 5372.02 ms      |
+| latency p99          | 7646.5 ms       |
+| latency max          | 13561.38 ms     |
+| distinct worker PIDs | 1  {2788: 2000} |
++----------------------------------------+
+           uvicorn-1worker__sync-io  (http://127.0.0.1:8000/sync-io)           
++-----------------------------------------------------------------------------+
+| metric               | value                                                |
+|----------------------+------------------------------------------------------|
+| requests             | 1000                                                 |
+| concurrency          | 200                                                  |
+| wall time            | 45.113 s                                             |
+| throughput           | 22.2 req/s                                           |
+| ok / errors          | 728 / 272                                            |
+| latency p50          | 2484.7 ms                                            |
+| latency p95          | 30269.67 ms                                          |
+| latency p99          | 30325.39 ms                                          |
+| latency max          | 30653.38 ms                                          |
+| distinct worker PIDs | 1  {2788: 728}                                       |
+| notes                | transport_errors=Counter({'ReadTimeout': 142,        |
+|                      | 'ConnectError': 130})                                |
++-----------------------------------------------------------------------------+
+          uvicorn-1worker__cpu           
+       (http://127.0.0.1:8000/cpu)       
++---------------------------------------+
+| metric               | value          |
+|----------------------+----------------|
+| requests             | 600            |
+| concurrency          | 100            |
+| wall time            | 5.619 s        |
+| throughput           | 106.8 req/s    |
+| ok / errors          | 600 / 0        |
+| latency p50          | 280.45 ms      |
+| latency p95          | 2754.93 ms     |
+| latency p99          | 3017.9 ms      |
+| latency max          | 3237.68 ms     |
+| distinct worker PIDs | 1  {2788: 600} |
++---------------------------------------+
+--- stopped uvicorn-1worker ---
+
+=== Booting: uvicorn-4workers ===
+    C:\Users\sande\AppData\Local\Programs\Python\Python313\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 4 --log-level warning
+    healthy. running workloads...
+
+              uvicorn-4workers__root  (http://127.0.0.1:8000/)              
++--------------------------------------------------------------------------+
+| metric               | value                                             |
+|----------------------+---------------------------------------------------|
+| requests             | 2000                                              |
+| concurrency          | 200                                               |
+| wall time            | 9.173 s                                           |
+| throughput           | 218.0 req/s                                       |
+| ok / errors          | 2000 / 0                                          |
+| latency p50          | 540.91 ms                                         |
+| latency p95          | 2844.48 ms                                        |
+| latency p99          | 4585.54 ms                                        |
+| latency max          | 6508.06 ms                                        |
+| distinct worker PIDs | 4  {18860: 762, 3344: 925, 16740: 247, 19064: 66} |
++--------------------------------------------------------------------------+
+        uvicorn-4workers__async-io  (http://127.0.0.1:8000/async-io)         
++---------------------------------------------------------------------------+
+| metric               | value                                              |
+|----------------------+----------------------------------------------------|
+| requests             | 2000                                               |
+| concurrency          | 200                                                |
+| wall time            | 22.258 s                                           |
+| throughput           | 89.9 req/s                                         |
+| ok / errors          | 2000 / 0                                           |
+| latency p50          | 1442.8 ms                                          |
+| latency p95          | 5949.08 ms                                         |
+| latency p99          | 8751.47 ms                                         |
+| latency max          | 16022.06 ms                                        |
+| distinct worker PIDs | 4  {3344: 290, 18860: 469, 19064: 897, 16740: 344} |
++---------------------------------------------------------------------------+
+         uvicorn-4workers__sync-io  (http://127.0.0.1:8000/sync-io)          
++---------------------------------------------------------------------------+
+| metric               | value                                              |
+|----------------------+----------------------------------------------------|
+| requests             | 1000                                               |
+| concurrency          | 200                                                |
+| wall time            | 19.396 s                                           |
+| throughput           | 51.6 req/s                                         |
+| ok / errors          | 1000 / 0                                           |
+| latency p50          | 2769.37 ms                                         |
+| latency p95          | 8883.76 ms                                         |
+| latency p99          | 12264.37 ms                                        |
+| latency max          | 14039.36 ms                                        |
+| distinct worker PIDs | 4  {3344: 182, 19064: 313, 16740: 238, 18860: 267} |
++---------------------------------------------------------------------------+
+            uvicorn-4workers__cpu  (http://127.0.0.1:8000/cpu)             
++-------------------------------------------------------------------------+
+| metric               | value                                            |
+|----------------------+--------------------------------------------------|
+| requests             | 600                                              |
+| concurrency          | 100                                              |
+| wall time            | 4.593 s                                          |
+| throughput           | 130.6 req/s                                      |
+| ok / errors          | 600 / 0                                          |
+| latency p50          | 521.03 ms                                        |
+| latency p95          | 2065.15 ms                                       |
+| latency p99          | 2862.46 ms                                       |
+| latency max          | 3515.89 ms                                       |
+| distinct worker PIDs | 4  {16740: 310, 3344: 82, 18860: 67, 19064: 141} |
++-------------------------------------------------------------------------+
+--- stopped uvicorn-4workers ---
+
+--- SKIP gunicorn-4-uvicornworker: Gunicorn is Unix-only (no fcntl on Windows). Run via WSL/Docker -- see docker/ folder. ---
+
+
+============================================================================================
+COMPARISON (throughput req/s, p95 latency ms, distinct worker PIDs)
+============================================================================================
+config / endpoint                                    rps    p95 ms    p99 ms    PIDs
+--------------------------------------------------------------------------------------------
+uvicorn-1worker__root                              338.0   1780.64   2911.92       1
+uvicorn-1worker__async-io                          111.1   5372.02    7646.5       1
+uvicorn-1worker__sync-io                            22.2  30269.67  30325.39       1
+uvicorn-1worker__cpu                               106.8   2754.93    3017.9       1
+uvicorn-4workers__root                             218.0   2844.48   4585.54       4
+uvicorn-4workers__async-io                          89.9   5949.08   8751.47       4
+uvicorn-4workers__sync-io                           51.6   8883.76  12264.37       4
+uvicorn-4workers__cpu                              130.6   2065.15   2862.46       4
+============================================================================================
+Tip: compare the same endpoint across configs. /cpu should reward more workers;
+/async-io should already be fast on a single worker; /sync-io should stay slow until
+you add workers (blocking work can't be saved by the event loop).

@@ -1,0 +1,33 @@
+# Spin up all three server configurations as Linux containers so you can benchmark
+# Gunicorn even from Windows. Each maps to a different host port.
+#
+#   docker compose -f docker/docker-compose.yml up --build
+#
+# Then from another terminal (host Python with httpx installed):
+#   python benchmarks/loadtest.py --url http://127.0.0.1:8001 --endpoint /cpu --requests 600 --concurrency 100 --label gunicorn-cpu
+#   python benchmarks/loadtest.py --url http://127.0.0.1:8002 --endpoint /cpu --requests 600 --concurrency 100 --label uvicorn-1w-cpu
+#   python benchmarks/loadtest.py --url http://127.0.0.1:8003 --endpoint /cpu --requests 600 --concurrency 100 --label uvicorn-4w-cpu
+services:
+  gunicorn-uvicornworker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports: ["8001:8000"]
+    command: >
+      python -m gunicorn app.main:app
+      -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:8000
+      --max-requests 10000 --max-requests-jitter 1000
+
+  uvicorn-1worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports: ["8002:8000"]
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+
+  uvicorn-4workers:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports: ["8003:8000"]
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
