@@ -2,7 +2,8 @@
 
 > **Purpose:** A single, self-contained page covering everything needed to decide which server stack to use
 > for a Python async web application. Includes conceptual foundations, a 15-parameter decision matrix,
-> full benchmark data from real tests run in this repository, analysis, production guidance, and references.
+> full benchmark data from real tests run in this repository, analysis, production guidance, a deep dive on
+> **Kubernetes deployment on powerful multi-core nodes (pods vs workers — see §14)**, and references.
 >
 > **Audience:** Backend engineers and SREs choosing how to serve a Python ASGI app
 > (FastAPI / Starlette / Litestar / Django ASGI) in production.
@@ -10,7 +11,7 @@
 > **Test environment:** Windows 11 | 8 CPUs | Python 3.13 | FastAPI 0.115.6 | Uvicorn 0.34.0 `[standard]`
 > *(Gunicorn is Unix-only; the Windows runs cover Uvicorn only. See §8.4 for the Linux/Docker comparison path.)*
 >
-> **Last reviewed:** 2026-06-22
+> **Last reviewed:** 2026-06-23
 
 ---
 
@@ -29,7 +30,8 @@
 11. [Production Checklist](#11-production-checklist)
 12. [Decision Tree — Recommendation](#12-decision-tree--recommendation)
 13. [Evolving Ecosystem Notes](#13-evolving-ecosystem-notes)
-14. [References & Sources](#14-references--sources)
+14. [Kubernetes on Powerful Multi-Core Nodes: Pods vs Workers](#14-kubernetes-on-powerful-multi-core-nodes-pods-vs-workers)
+15. [References & Sources](#15-references--sources)
 
 ---
 
@@ -239,7 +241,7 @@ This is the **only** way to:
 | **Async I/O-bound** (most of FastAPI) | Often 1–2 workers is sufficient; the event loop handles concurrency. Add more only if CPU or memory is saturated. |
 | **CPU-bound** (serialisation, crypto, ML inference in-process) | Start at `workers = CPU cores`. Classic Gunicorn formula: `(2 × cores) + 1`. More than core-count adds context-switching cost without benefit. |
 | **Blocking I/O anti-pattern** (`time.sleep` inside async) | More workers help linearly up to core count, but the *real* fix is to not block the event loop — move blocking calls to a thread pool (`run_in_executor`) or use `def` endpoints (FastAPI handles these in a threadpool automatically). |
-| **Kubernetes / containers** | **1 worker per container**. Scale via replicas + HPA. Per-container isolation is cleaner than in-pod worker counts fighting the scheduler's CPU accounting. |
+| **Kubernetes / containers** | **1 worker per container**. Scale via replicas + HPA. Per-container isolation is cleaner than in-pod worker counts fighting the scheduler's CPU accounting. **On powerful multi-core nodes, see the full deep dive in [§14](#14-kubernetes-on-powerful-multi-core-nodes-pods-vs-workers) — "should I run Gunicorn with N workers per node, or let Kubernetes manage many thin pods?"** |
 
 ### 6.4 Memory is the Ceiling
 
@@ -682,7 +684,418 @@ shift again. Watch PEP 703 and CPython release notes.
 
 ---
 
-## 14. References & Sources
+## 14. Kubernetes on Powerful Multi-Core Nodes: Pods vs Workers
+
+> **This section answers a specific, real-world question:**
+> *"I have a Kubernetes cluster, but each node is a powerful machine — 4-core or 8-core.
+> Should I just run Gunicorn with 4 workers on each machine alongside Kubernetes? Or does
+> Kubernetes already have granular control over the worker processes on each machine?
+> What should I do?"*
+>
+> It is one of the most common — and most misunderstood — decisions in deploying Python ASGI
+> apps to Kubernetes. The short answer changes how you size everything, so it gets its own section.
+
+### 14.1 The 30-second answer
+
+1. **No — Kubernetes does *not* have granular control over worker processes inside a container.**
+   Kubernetes' unit of management is the **Pod**, not the OS process. If you run
+   `gunicorn -w 4` inside a pod, Kubernetes sees **one pod**; it is completely blind to the 4 workers
+   inside. Gunicorn manages those 4; Kubernetes manages the pod around them.
+2. **If you want Kubernetes to have granular, per-worker control, you make each worker its own pod**
+   — i.e. **one Uvicorn process per pod**, and run **many pods**. Then each "worker" *is* a pod that
+   Kubernetes can independently schedule, health-check, restart, autoscale, and reschedule.
+3. **A powerful 8-core node does not make a single Python process faster** — the GIL means one process
+   uses one core. A beefy node just means you can pack **more processes** (as more pods, or more
+   workers per pod) onto it.
+4. **Recommended default for your cluster:** **thin pods — 1 (or 2) Uvicorn workers per pod, several
+   pods per node, scaled by the Horizontal Pod Autoscaler (HPA).** Reach for "Gunicorn + N workers
+   inside one pod" only for specific reasons (large shared in-memory model, heavy service-mesh sidecar
+   overhead) covered in §14.6–14.8.
+
+The rest of this section explains *why*, dimension by dimension, and gives ready-to-use manifests.
+
+---
+
+### 14.2 The one fact that drives everything: Kubernetes manages Pods, not processes
+
+This is the crux of your question, so it is worth stating very precisely.
+
+| Layer | Who manages it | What it can do |
+|---|---|---|
+| **Node** (your 8-core machine) | Kubernetes scheduler + kubelet | Decides which pods land on which node; enforces node capacity |
+| **Pod** (one or more containers) | Kubernetes (Deployment, ReplicaSet, HPA, probes) | Create, delete, restart, reschedule, scale, health-check, roll out |
+| **Container** (your image) | kubelet via the container runtime | Start/stop, apply CPU/memory limits, run probes |
+| **Worker process** (Uvicorn/Gunicorn worker *inside* the container) | **Gunicorn or Uvicorn — NOT Kubernetes** | Fork, restart-on-crash, timeout-kill, recycle |
+
+When you run **`gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 4`** inside a pod:
+
+```
+            ┌─────────────────────── POD (what Kubernetes sees & controls) ──────────────────────┐
+            │                                                                                     │
+            │   Gunicorn master  ──manages──►  Uvicorn worker 1   (Kubernetes is BLIND to these) │
+            │        │                          Uvicorn worker 2                                  │
+            │        └──────────manages────────►Uvicorn worker 3                                  │
+            │                                    Uvicorn worker 4                                  │
+            │                                                                                     │
+            └─────────────────────────────────────────────────────────────────────────────────────┘
+                        ▲
+                        │  Kubernetes restarts / scales / health-checks at THIS boundary only
+```
+
+**Consequences of Kubernetes being blind to the inner workers:**
+
+- **Restart granularity:** If one of the 4 workers wedges or crashes, *Gunicorn* replaces it.
+  Kubernetes neither knows nor helps. If you instead want "K8s restarts the unhealthy unit,"
+  the unhealthy unit has to *be a pod*.
+- **Health checks lie:** A readiness/liveness probe hits **one** HTTP endpoint, answered by **whichever
+  worker** the kernel/Gunicorn happens to route it to. Three of four workers can be deadlocked while the
+  fourth cheerfully answers `/health` — and Kubernetes marks the **whole pod Ready**. With one worker per
+  pod, the probe reflects exactly that one worker's health. **No false "healthy."**
+- **Autoscaling granularity:** HPA scales **pods**, not workers. With 4-workers-per-pod, HPA adds/removes
+  capacity **4 workers at a time** — a coarse, lumpy step. With 1-worker pods, HPA adds capacity one small
+  unit at a time — smooth and precise.
+- **Scheduling/placement:** All 4 workers in a fat pod are pinned to **one node**. They cannot spread
+  across the cluster for high availability. One-worker pods can be spread across nodes (anti-affinity /
+  topology spread), so a single node failure costs you a fraction of capacity, not a quarter in one go.
+
+> **Direct answer to your question:** Running Gunicorn-with-4-workers per node *works*, but it puts
+> worker management **under Gunicorn, not Kubernetes**. Kubernetes will **not** have granular control
+> over those workers — it only controls the pod they live in. To hand Kubernetes that granular control,
+> give each worker its own pod.
+
+---
+
+### 14.3 The GIL still rules: a powerful node is not free parallelism
+
+It is tempting to think "my node has 8 cores, so my app can use 8 cores." Not by itself.
+
+- **One Python process = one GIL = one core of Python bytecode at a time** (see §6).
+- To actually use all 8 cores you need **8 Python processes**, *however they are packaged*:
+  - 8 pods × 1 worker each, **or**
+  - 1 pod × 8 workers, **or**
+  - 4 pods × 2 workers, … any combination that yields 8 processes.
+- A bigger node does **not** speed up a single process. It just gives you room to run **more** processes.
+
+So the 8-core node does not change *whether* you need multiple processes — you do, to use the hardware.
+It only changes *how you package* those processes. That packaging choice is the entire subject of this section.
+
+---
+
+### 14.4 The two packaging patterns
+
+**Pattern A — "Thin pods" (one process per pod) — the cloud-native default**
+
+```
+Node (8 cores)
+ ├─ Pod 1: [ 1 Uvicorn worker ]   ← K8s controls this unit
+ ├─ Pod 2: [ 1 Uvicorn worker ]   ← K8s controls this unit
+ ├─ Pod 3: [ 1 Uvicorn worker ]
+ ├─ … up to ~6–7 pods (leave headroom for kubelet/system) …
+ └─ Pod 7: [ 1 Uvicorn worker ]
+```
+Command per pod: `uvicorn app.main:app --host 0.0.0.0 --port 8000` (no `--workers`, or `--workers 1`).
+Kubernetes is the *only* supervisor. Each worker is independently schedulable, health-checked, scalable.
+
+**Pattern B — "Fat pods" (many workers per pod)**
+
+```
+Node (8 cores)
+ └─ Pod 1: [ Gunicorn master → 4–8 Uvicorn workers ]   ← K8s controls the POD; Gunicorn controls the workers
+```
+Command: `gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 4 --timeout 30 --max-requests 2000 --preload`
+Two supervisors. Kubernetes sees one pod; Gunicorn manages the workers inside.
+
+**Pattern C — "Hybrid" (a few workers per pod, several pods) — the pragmatic middle**
+
+```
+Node (8 cores)
+ ├─ Pod 1: [ 2 Uvicorn workers ]
+ ├─ Pod 2: [ 2 Uvicorn workers ]
+ └─ Pod 3: [ 2 Uvicorn workers ]
+```
+Command per pod: `uvicorn app.main:app --workers 2`. Captures *some* copy-on-write memory sharing and
+*some* sidecar amortisation while keeping pods small enough for granular scheduling/scaling.
+
+---
+
+### 14.5 Dimension-by-dimension comparison
+
+| Dimension | Thin pods (1 proc/pod) | Fat pods (N workers/pod) |
+|---|---|---|
+| **Granular control by Kubernetes** | ★★★ Each worker is a pod K8s fully controls | ✗ K8s blind to inner workers; Gunicorn controls them |
+| **Health-check accuracy** | ★★★ Probe = that worker's true health | ✗ One healthy worker masks N-1 sick ones |
+| **Autoscaling (HPA) granularity** | ★★★ Scale one small unit at a time | ★ Scale N workers per step (lumpy) |
+| **Failure blast radius** | ★★★ Lose 1 worker's capacity on crash/OOM | ★ Pod OOM kills *all* its workers together |
+| **HA spread across nodes** | ★★★ Spread pods via anti-affinity | ✗ All workers pinned to one node |
+| **Rolling deploy granularity** | ★★★ Replace pods incrementally | ★★ Whole fat pods cycle at once |
+| **Memory via copy-on-write** | ✗ Each pod a full copy of model/app | ★★★ `--preload` shares read-only pages (big win for large models) |
+| **Service-mesh sidecar overhead** | ✗ One Envoy sidecar **per pod** (adds up) | ★★★ One sidecar amortised over N workers |
+| **CPU throttling behaviour** | ★★★ Small per-pod quota, smoother | ★ Big bursty quota → CFS throttling spikes (§14.6) |
+| **Pod/IP count & control-plane load** | ★ Many pods, many IPs | ★★★ Far fewer pods |
+| **Operational simplicity** | ★★★ One supervisor (K8s) | ★★ Two supervisors to reason about |
+| **Fit when node is huge (8-core+)** | ★★★ Just run more pods on it | ★★ Works, but you give up the wins above |
+
+**How to read it:** Thin pods win almost every *Kubernetes-native* dimension (the left-hand benefits are
+exactly the things you adopted Kubernetes *for*). Fat pods win on **memory sharing** and **sidecar/overhead
+amortisation** — real, but narrower, concerns. The node being powerful does not tilt the table toward fat
+pods; it just means a thin-pod layout runs *more pods per node*.
+
+---
+
+### 14.6 The CPU-limits / throttling trap (the most-missed gotcha)
+
+This bites fat pods specifically, so it matters directly to "Gunicorn with 4 workers in a pod."
+
+- Kubernetes enforces a **CPU limit** using the Linux **CFS quota** (`cpu.cfs_quota_us` over a
+  `cpu.cfs_period_us`, default 100 ms). A limit of `"4"` means "4 CPU-seconds of runtime per 1 second
+  of wall-clock, doled out in 100 ms slices."
+- A pod running **4–8 busy workers** can burn its entire slice **early in the 100 ms window**, then gets
+  **hard-throttled** (frozen) until the next window. The result is **p99 latency spikes** that look
+  mysterious — average CPU "looks fine," but tail latency is bad. This is **CFS throttling**, and it is
+  worse the more processes share one big quota.
+- **Thin pods** each carry a small quota (~1 core). The same total work is spread over many small quotas,
+  so throttling is far less bursty.
+
+**Practical guidance:**
+- **Always set CPU & memory *requests*** (the scheduler needs them to bin-pack and to compute HPA utilisation).
+- **Set a *memory limit*** (a leaking pod should be OOM-killed, not allowed to take down the node).
+- **Be cautious with *CPU limits* on latency-sensitive services.** A widely used pattern is to set CPU
+  *requests* but **omit CPU *limits*** so a pod can burst into idle node capacity instead of being throttled.
+  The trade-off is weaker isolation from noisy neighbours — acceptable on nodes you control and right-size,
+  riskier on shared multi-tenant nodes. Decide deliberately; don't copy a `limits.cpu` in by reflex.
+
+---
+
+### 14.7 Memory & copy-on-write: the strongest case *for* a few workers per pod
+
+This is the one dimension where fat (or hybrid) pods clearly win, and it can be decisive.
+
+- Every worker is a **full copy of your Python app in memory**. If your app loads a **large read-only
+  asset** — an ML model, a big embeddings table, a 1–2 GB lookup — then:
+  - **Thin pods:** 8 pods × 2 GB model = **~16 GB** consumed on the node. Brutal.
+  - **Fat pod with `--preload`:** Gunicorn loads the model **once in the master**, then forks workers.
+    Thanks to **copy-on-write**, the read-only model pages are **shared** across workers until written.
+    8 workers might consume **~2–4 GB total** instead of 16 GB. Massive saving.
+- Without a large shared asset (a typical stateless CRUD/API service of, say, 150–300 MB per process),
+  this advantage is small and the thin-pod benefits dominate.
+
+**Rule of thumb:** The bigger your per-process fixed memory cost (models, caches), the more a
+**few-workers-per-pod (Pattern B/C) with `--preload`** pays for itself. The smaller it is, the more
+**thin pods (Pattern A)** win.
+
+---
+
+### 14.8 Recommendation for *your* cluster (4-/8-core nodes)
+
+Putting it together for the exact scenario in the question:
+
+**Default: go thin or hybrid — let Kubernetes be the manager.**
+
+- Run **1 Uvicorn worker per pod** (or **2** if you want a little COW sharing / fewer pods), and run
+  **several pods per node**. Let the scheduler place them and the **HPA** scale the replica count on
+  CPU utilisation (or a custom metric like RPS / in-flight requests).
+- This gives Kubernetes the **granular control** your question is really asking about: per-worker
+  scheduling, accurate health checks, smooth autoscaling, small blast radius, cross-node HA.
+- **You do not need Gunicorn here.** Plain `uvicorn` (1 worker) or `uvicorn --workers 2` is enough,
+  because **Kubernetes is already the process supervisor** — it does the crash-restart, the rollout,
+  and the scaling that Gunicorn would otherwise provide.
+
+**Sizing example for one 8-core node (thin):**
+- Reserve ~1 core + memory for kubelet, CNI, logging/metrics DaemonSets, and any service-mesh sidecars.
+- ~7 cores left for app pods → e.g. **6–7 pods**, each `requests.cpu: ~900m`, 1 Uvicorn worker.
+- HPA `minReplicas` sized to your baseline; `maxReplicas` high enough to spill onto more nodes under load.
+
+**Deviate toward fat/hybrid pods (Gunicorn + workers, or `uvicorn --workers N`) only when:**
+1. **Large shared in-memory model/cache** → `--preload` copy-on-write saves real RAM (§14.7). *Strongest reason.*
+2. **Service mesh (Istio/Linkerd sidecar) per pod** is a meaningful % of overhead and you want to amortise
+   one sidecar over several workers. *(Note: sidecar-less "ambient" mesh modes weaken this argument.)*
+3. **Very large clusters** where the sheer **pod/IP count** strains the control plane, IPAM, or the
+   `max-pods-per-node` ceiling, and you deliberately want fewer, denser pods.
+4. You specifically want **Gunicorn's in-pod robustness** — `--timeout` hung-worker kill and
+   `--max-requests` recycling — *in addition to* Kubernetes' pod-level management.
+
+**If you do choose fat pods, then yes — "Gunicorn + UvicornWorker with N workers" is the right tool**
+(not plain `uvicorn --workers`), precisely because you now *want* a real in-pod supervisor with
+timeout-kill and recycling. Size `N ≈ the pod's CPU request in cores`, set `--timeout`, `--max-requests`,
+`--max-requests-jitter`, and `--preload`, and **don't fill the whole node with one pod** — keep at least
+2–3 pods so you retain cross-node HA and rolling-deploy granularity.
+
+**What to avoid:** one giant pod with 8 workers consuming an entire node. It throws away scheduling
+flexibility, HA spread, accurate health checks, and smooth autoscaling — i.e. most of the reasons you
+run Kubernetes at all.
+
+---
+
+### 14.9 Reference manifests
+
+#### A) Thin pod (recommended default) — Deployment + HPA + probes + graceful shutdown
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapi
+spec:
+  replicas: 6                       # starting point; the HPA below adjusts this
+  selector:
+    matchLabels: { app: myapi }
+  template:
+    metadata:
+      labels: { app: myapi }
+    spec:
+      terminationGracePeriodSeconds: 40        # >= your graceful drain time
+      # Spread pods across nodes so one node failure isn't catastrophic:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app: myapi }
+      containers:
+        - name: myapi
+          image: myregistry/myapi:1.0.0
+          # ONE Uvicorn process. Kubernetes is the supervisor — no Gunicorn needed.
+          command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: "900m"           # scheduler uses this; ~1 core per pod
+              memory: "256Mi"
+            limits:
+              memory: "512Mi"       # OOM-kill a leaking pod; CPU limit omitted on purpose (see §14.6)
+          startupProbe:             # gives a slow import/model-load time to finish before liveness kicks in
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 5
+            failureThreshold: 30    # up to ~150s to become ready
+          readinessProbe:           # gate traffic; with 1 worker this is the worker's true health
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:            # restart a wedged pod
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 10
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              # Let the Service/LB stop routing to this pod BEFORE SIGTERM starts draining it.
+              exec: { command: ["sh", "-c", "sleep 5"] }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: myapi
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: myapi
+  minReplicas: 6
+  maxReplicas: 40                   # high enough to spill onto more nodes under load
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70    # utilisation is measured against requests.cpu
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: myapi
+spec:
+  minAvailable: 50%                 # protect capacity during node drains/upgrades
+  selector:
+    matchLabels: { app: myapi }
+```
+
+#### B) Fat / hybrid pod — Gunicorn + Uvicorn workers (use when §14.8 reasons apply)
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapi
+spec:
+  replicas: 3                       # keep several pods — don't put one pod per node
+  selector:
+    matchLabels: { app: myapi }
+  template:
+    metadata:
+      labels: { app: myapi }
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: myapi
+          image: myregistry/myapi:1.0.0
+          # Gunicorn IS wanted here: it supervises the workers Kubernetes can't see.
+          command:
+            - gunicorn
+            - app.main:app
+            - -k
+            - uvicorn.workers.UvicornWorker     # or uvicorn_worker.UvicornWorker (newer package, see §13)
+            - --workers
+            - "4"                                # ≈ this pod's CPU request, in cores
+            - --bind
+            - "0.0.0.0:8000"
+            - --timeout
+            - "30"                               # kill a hung worker (K8s won't do this inside the pod)
+            - --graceful-timeout
+            - "30"
+            - --max-requests
+            - "2000"                             # recycle workers to bound memory leaks
+            - --max-requests-jitter
+            - "200"
+            - --preload                          # load the big model once; share via copy-on-write (§14.7)
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: "3500m"                       # ~4 cores for 4 workers
+              memory: "3Gi"                      # one shared preloaded model
+            limits:
+              memory: "4Gi"
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 10
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec: { command: ["sh", "-c", "sleep 5"] }
+```
+
+> ⚠️ **Caveat on fat-pod probes:** because the probe can be answered by any one healthy worker, a fat
+> pod can report Ready while some workers are wedged (§14.2). Mitigate with Gunicorn `--timeout` (so hung
+> workers get killed and replaced quickly) and consider app-level checks that exercise real dependencies.
+
+---
+
+### 14.10 Quick decision checklist for your cluster
+
+- [ ] **Do you want Kubernetes to manage the units of capacity (restart, scale, reschedule, health-check)?**
+      → **Thin pods**, 1 Uvicorn worker each. *(This is the "granular control" you asked about.)*
+- [ ] **Is your per-process memory small (stateless API, no big model)?** → **Thin pods**.
+- [ ] **Do you load a large read-only model/cache per process?** → **Fat/hybrid pods** with Gunicorn `--preload`.
+- [ ] **Do you run a per-pod service-mesh sidecar whose overhead you must amortise?** → lean **hybrid/fat**.
+- [ ] **Latency-sensitive?** → set CPU **requests**, think hard before adding CPU **limits** (§14.6).
+- [ ] **Whichever you pick:** memory limit on, `terminationGracePeriodSeconds` ≥ drain time, `preStop` sleep,
+      readiness+liveness+startup probes, PodDisruptionBudget, and spread pods across nodes for HA.
+- [ ] **Never** collapse to one node-filling pod with all workers — you lose the Kubernetes benefits entirely.
+
+> **Bottom line for your 8-core nodes:** the powerful hardware does **not** push you toward "Gunicorn with
+> 4 workers per node." Default to **thin (or 2-worker hybrid) pods and let Kubernetes + HPA spread many of
+> them across each big node** — that is what gives Kubernetes the fine-grained control. Add **Gunicorn +
+> workers inside a pod only when a large shared model or sidecar overhead makes denser pods worth it**, and
+> even then keep several pods for HA.
+
+---
+
+## 15. References & Sources
 
 All links verified approximately June 2026. Versions move; check the live documentation for current guidance.
 
@@ -710,6 +1123,21 @@ All links verified approximately June 2026. Versions move; check the live docume
 | PEP 703 — Making the GIL Optional | https://peps.python.org/pep-0703/ |
 | Python `asyncio` Docs | https://docs.python.org/3/library/asyncio.html |
 | uvloop | https://github.com/MagicStack/uvloop |
+
+### Kubernetes — Pods, Workers, Autoscaling & Resources (for §14)
+
+| Resource | URL | What it Covers |
+|---|---|---|
+| Pod concept | https://kubernetes.io/docs/concepts/workloads/pods/ | The pod as Kubernetes' smallest manageable unit |
+| Managing Resources (requests/limits) | https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ | CPU/memory requests & limits semantics |
+| Assign CPU Resources | https://kubernetes.io/docs/tasks/configure-pod-container/assign-cpu-resource/ | How CPU requests/limits map to CFS quota |
+| Horizontal Pod Autoscaler | https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/ | Scaling replica count (pods, not workers) |
+| Liveness/Readiness/Startup Probes | https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/ | Pod-level health checking |
+| Pod Topology Spread Constraints | https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/ | Spreading pods across nodes for HA |
+| Pod Disruption Budget | https://kubernetes.io/docs/tasks/run-application/configure-pdb/ | Protecting capacity during drains/upgrades |
+| Pod termination & graceful shutdown | https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination | SIGTERM, preStop, terminationGracePeriodSeconds |
+| CFS bandwidth / CPU throttling (kernel) | https://docs.kernel.org/scheduler/sched-bwc.html | Why fat pods with CPU limits get throttled (§14.6) |
+| FastAPI in Containers | https://fastapi.tiangolo.com/deployment/docker/ | Official "one process per container" guidance |
 
 ### Benchmarks & External Data
 
