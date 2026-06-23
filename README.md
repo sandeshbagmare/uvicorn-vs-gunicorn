@@ -21,8 +21,10 @@ async Python (FastAPI) apps in production. It ships with:
 ```
 uvicornvsgunicorn/
 ├── README.md                      ← you are here
+├── FINAL_WORD.md                  ← the capstone: Kubernetes-first conclusion + every finding
 ├── BEGINNERS_GUIDE.md             ← plain-English explainer (no experience needed)
 ├── FINAL_CONFLUENCE_PAGE.md       ← full technical reference (matrix + all benchmark numbers)
+├── CLAIMS_AND_SOURCES.md          ← every assertion paired with its source link
 ├── LICENSE                        ← MIT
 ├── app/
 │   ├── main.py                    ← FastAPI demo app (/, /async-io, /sync-io, /cpu)
@@ -90,10 +92,16 @@ python benchmarks\loadtest.py --url http://127.0.0.1:8003 --endpoint /cpu --requ
 ```
 
 ## What to read next
+- **Just want the conclusion?** Read [FINAL_WORD.md](FINAL_WORD.md) — the one-page capstone: a
+  Kubernetes-first verdict that folds in every finding and tackles the "won't one worker per pod
+  underutilise my multi-core node?" question head-on.
 - **New to all this?** Read [BEGINNERS_GUIDE.md](BEGINNERS_GUIDE.md) — explains web servers, WSGI vs
   ASGI, Uvicorn, and Gunicorn from scratch, with the real benchmark results in plain English.
 - **Want the full reference?** [FINAL_CONFLUENCE_PAGE.md](FINAL_CONFLUENCE_PAGE.md) — every detail:
-  15-parameter decision matrix, complete benchmark tables, analysis, production checklist, sources.
+  15-parameter decision matrix, complete benchmark tables, analysis, production checklist, the
+  Kubernetes pods-vs-workers deep dive (§14), and sources.
+- **Want to verify a claim?** [CLAIMS_AND_SOURCES.md](CLAIMS_AND_SOURCES.md) — every assertion in this
+  repo paired with its official doc, spec/PEP, maintainer repo, or engineering-blog source.
 - Start with the **TL;DR** and **30-second mental model** in [docs/uvicorn-vs-gunicorn.md](docs/uvicorn-vs-gunicorn.md).
 - Score your own situation with [docs/decision-matrix.md](docs/decision-matrix.md).
 - Then run the benchmarks above and paste your numbers into the article's *Benchmark results* section.
