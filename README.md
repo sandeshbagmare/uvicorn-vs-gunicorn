@@ -21,6 +21,7 @@ async Python (FastAPI) apps in production. It ships with:
 ```
 uvicornvsgunicorn/
 ├── README.md                      ← you are here
+├── DEV_GUIDE.md                   ← 7-min dev quick guide: what to use where + commands
 ├── FINAL_WORD.md                  ← the capstone: Kubernetes-first conclusion + every finding
 ├── BEGINNERS_GUIDE.md             ← plain-English explainer (no experience needed)
 ├── FINAL_CONFLUENCE_PAGE.md       ← full technical reference (matrix + all benchmark numbers)
@@ -92,6 +93,8 @@ python benchmarks\loadtest.py --url http://127.0.0.1:8003 --endpoint /cpu --requ
 ```
 
 ## What to read next
+- **Shipping today? (7-min read)** [DEV_GUIDE.md](DEV_GUIDE.md) — pick-your-row recommendations,
+  copy-paste commands, the one perf rule, and inline source links.
 - **Just want the conclusion?** Read [FINAL_WORD.md](FINAL_WORD.md) — the one-page capstone: a
   Kubernetes-first verdict that folds in every finding and tackles the "won't one worker per pod
   underutilise my multi-core node?" question head-on.
