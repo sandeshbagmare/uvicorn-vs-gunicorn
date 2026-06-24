@@ -11,6 +11,11 @@
 > 3. **Production Kubernetes manifests** ([`manifests/k8s-gunicorn-4workers.yaml`](manifests/k8s-gunicorn-4workers.yaml)) and a **ground-truth load-test script** ([`scripts/k8s_loadtest.sh`](scripts/k8s_loadtest.sh)) to measure the real thing on your cluster.
 >
 > **Last run:** 2026-06-24 · Windows 11 · 8 CPUs · Python 3.13.12 · FastAPI 0.115.6 · Uvicorn 0.34.0`[standard]`
+>
+> **📚 Companion articles in this folder (every line individually sourced):**
+> - [**Why in-pod Gunicorn workers are discouraged on Kubernetes**](why-not-gunicorn-workers-on-kubernetes.md) — the autoscaler/OOM/health-check reasons, with the counter-arguments.
+> - [**Sourced Edition — core Uvicorn-vs-Gunicorn claims, line by line**](sourced-edition-core-claims.md) — each claim tagged with an inline `[S#]` you can click to verify.
+> - [**Related articles & further reading**](related-articles.md) — curated sources, labelled by what they back and how much to trust them.
 
 ---
 
@@ -213,7 +218,10 @@ plus probes, graceful drain, topology spread, and a PodDisruptionBudget.
 
 | Path | What it is |
 |---|---|
-| [`README.md`](README.md) | This document — the research write-up |
+| [`README.md`](README.md) | This document — the "N pods × 4 workers" latency research write-up |
+| [`why-not-gunicorn-workers-on-kubernetes.md`](why-not-gunicorn-workers-on-kubernetes.md) | **Article:** why in-pod Gunicorn workers are discouraged on K8s — every line sourced |
+| [`sourced-edition-core-claims.md`](sourced-edition-core-claims.md) | **Article:** the core Uvicorn-vs-Gunicorn claims, each line with an inline `[S#]` source |
+| [`related-articles.md`](related-articles.md) | **Reading list:** curated sources, each labelled by what it backs and its trust level |
 | [`scripts/cluster_emulation.py`](scripts/cluster_emulation.py) | Boots N pods × M workers locally, sweeps load, measures latency |
 | [`scripts/latency_model.py`](scripts/latency_model.py) | M/M/c queueing model; predicts latency for any pods/load |
 | [`scripts/k8s_loadtest.sh`](scripts/k8s_loadtest.sh) | Drives the real cluster at 1→4 pods, captures ground-truth JSON |
