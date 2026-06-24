@@ -42,6 +42,11 @@ uvicornvsgunicorn/
 ├── docker/
 │   ├── Dockerfile
 │   └── docker-compose.yml         ← gunicorn + uvicorn-1w + uvicorn-Nw side by side
+├── research/                      ← deep-dive: latency of "N pods × 4 workers" on Kubernetes
+│   ├── README.md                  ← the research write-up (measured + modelled + manifests)
+│   ├── scripts/                   ← cluster_emulation.py, latency_model.py, k8s_loadtest.sh
+│   ├── manifests/                 ← k8s Deployment + Service + HPA + PDB for the scenario
+│   └── data/                      ← measured emulation + model prediction JSON
 └── results/                       ← benchmark JSON + charts land here
 ```
 
@@ -105,6 +110,9 @@ python benchmarks\loadtest.py --url http://127.0.0.1:8003 --endpoint /cpu --requ
   Kubernetes pods-vs-workers deep dive (§14), and sources.
 - **Want to verify a claim?** [CLAIMS_AND_SOURCES.md](CLAIMS_AND_SOURCES.md) — every assertion in this
   repo paired with its official doc, spec/PEP, maintainer repo, or engineering-blog source.
+- **Researching cluster latency?** [research/](research/) — "what is the latency of N pods × 4 workers
+  (Gunicorn) on Kubernetes?", measured by an emulation harness, predicted by a queueing model, and
+  reproducible on a real cluster via the included manifests.
 - Start with the **TL;DR** and **30-second mental model** in [docs/uvicorn-vs-gunicorn.md](docs/uvicorn-vs-gunicorn.md).
 - Score your own situation with [docs/decision-matrix.md](docs/decision-matrix.md).
 - Then run the benchmarks above and paste your numbers into the article's *Benchmark results* section.

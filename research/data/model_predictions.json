@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "service_ms": 10.0,
+    "pods": [
+      1
+    ],
+    "workers": 4,
+    "lam": [
+      50.0
+    ],
+    "io_concurrency": 1,
+    "out": "research/data/model_predictions.json"
+  },
+  "predictions": [
+    {
+      "pods": 1,
+      "workers_per_pod": 4,
+      "io_concurrency": 1,
+      "lanes": 4,
+      "offered_rps": 50.0,
+      "stable": true,
+      "rho": 0.125,
+      "capacity_rps": 400.0,
+      "mean_ms": 10.01,
+      "p50_ms": 10.0,
+      "p95_ms": 10.0,
+      "p99_ms": 10.0,
+      "note": ""
+    }
+  ]
+}

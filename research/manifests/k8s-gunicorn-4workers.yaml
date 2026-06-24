@@ -1,0 +1,120 @@
+# Real-cluster deployment for the "N pods x 4 workers (Gunicorn)" research scenario.
+#
+# Each pod is allotted ~4 CPUs and runs Gunicorn with 4 UvicornWorker processes,
+# so worker-count == CPU allotment (1 worker per core; the GIL means 1 process ~ 1 core).
+# Start with 3 replicas (pods); the HPA scales toward 4+ under load.
+#
+# Apply:   kubectl apply -f research/manifests/k8s-gunicorn-4workers.yaml
+# Watch:   kubectl get pods -l app=uvg-research -w
+# Then run the load test from research/scripts/k8s_loadtest.sh against the Service.
+#
+# Build the image from this repo's docker/Dockerfile, or any image that contains
+# app/main.py + fastapi + uvicorn[standard] + gunicorn + uvicorn-worker.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uvg-research
+  labels: { app: uvg-research }
+spec:
+  replicas: 3                                  # 3 pods to start; HPA below can grow to 4+
+  selector:
+    matchLabels: { app: uvg-research }
+  template:
+    metadata:
+      labels: { app: uvg-research }
+    spec:
+      terminationGracePeriodSeconds: 40
+      # Spread the pods across different nodes so one node failure isn't catastrophic.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app: uvg-research }
+      containers:
+        - name: app
+          image: REPLACE_ME/uvicorn-vs-gunicorn:latest   # build from docker/Dockerfile
+          # Gunicorn master + 4 Uvicorn workers (4 workers == 4 CPU allotment).
+          # Uses the new uvicorn-worker package (uvicorn.workers is deprecated since 0.30).
+          command:
+            - gunicorn
+            - app.main:app
+            - -k
+            - uvicorn_worker.UvicornWorker
+            - --workers
+            - "4"
+            - --bind
+            - "0.0.0.0:8000"
+            - --timeout
+            - "30"                              # kill a hung worker (K8s can't see inside the pod)
+            - --graceful-timeout
+            - "30"
+            - --max-requests
+            - "2000"                            # recycle workers to bound memory leaks
+            - --max-requests-jitter
+            - "200"
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: "4"                          # ~4 CPUs per pod => 4 workers is the right count
+              memory: "1Gi"
+            limits:
+              memory: "2Gi"                     # memory limit on; CPU limit omitted (avoid CFS throttling)
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 10
+            failureThreshold: 3
+          startupProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 5
+            failureThreshold: 30                # allow up to ~150s for slow first import
+          lifecycle:
+            preStop:
+              exec: { command: ["sh", "-c", "sleep 5"] }   # let the Service stop routing before SIGTERM
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: uvg-research
+  labels: { app: uvg-research }
+spec:
+  selector: { app: uvg-research }
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+  type: ClusterIP                                # kube-proxy load-balances across pod endpoints
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: uvg-research
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: uvg-research
+  minReplicas: 3
+  maxReplicas: 8                                 # lets the cluster scale from 3 -> 4+ pods under load
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70                 # measured against requests.cpu (=4)
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: uvg-research
+spec:
+  minAvailable: 50%                              # protect capacity during node drains/upgrades
+  selector:
+    matchLabels: { app: uvg-research }

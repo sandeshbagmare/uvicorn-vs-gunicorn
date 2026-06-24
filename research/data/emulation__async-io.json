@@ -1,0 +1,224 @@
+{
+  "meta": {
+    "pods": [
+      1,
+      2
+    ],
+    "workers": 4,
+    "endpoint": "/async-io",
+    "concurrency": [
+      50,
+      100,
+      200
+    ],
+    "requests": 1500,
+    "base_port": 9100,
+    "out": "research/data"
+  },
+  "runs": [
+    {
+      "endpoint": "/async-io",
+      "pods": 1,
+      "concurrency": 50,
+      "requests": 1500,
+      "wall_time_s": 14.605,
+      "throughput_rps": 102.7,
+      "ok": 1500,
+      "errors": 0,
+      "distinct_pids": 4,
+      "latency_ms": {
+        "min": 74.84,
+        "p50": 326.53,
+        "p90": 1018.35,
+        "p95": 1321.43,
+        "p99": 2427.55,
+        "max": 6110.46,
+        "mean": 473.75
+      },
+      "pid_distribution": {
+        "21000": 1269,
+        "28220": 136,
+        "28344": 91,
+        "29564": 4
+      },
+      "transport_errors": {},
+      "workers_per_pod": 4,
+      "total_worker_processes": 4,
+      "platform": "Windows",
+      "server": "uvicorn --workers 4 (Windows; Gunicorn unavailable)"
+    },
+    {
+      "endpoint": "/async-io",
+      "pods": 1,
+      "concurrency": 100,
+      "requests": 1500,
+      "wall_time_s": 18.141,
+      "throughput_rps": 82.7,
+      "ok": 1500,
+      "errors": 0,
+      "distinct_pids": 4,
+      "latency_ms": {
+        "min": 74.45,
+        "p50": 742.06,
+        "p90": 2656.59,
+        "p95": 3433.6,
+        "p99": 6074.11,
+        "max": 13237.9,
+        "mean": 1160.14
+      },
+      "pid_distribution": {
+        "28220": 132,
+        "29564": 220,
+        "28344": 1012,
+        "21000": 136
+      },
+      "transport_errors": {},
+      "workers_per_pod": 4,
+      "total_worker_processes": 4,
+      "platform": "Windows",
+      "server": "uvicorn --workers 4 (Windows; Gunicorn unavailable)"
+    },
+    {
+      "endpoint": "/async-io",
+      "pods": 1,
+      "concurrency": 200,
+      "requests": 1500,
+      "wall_time_s": 41.096,
+      "throughput_rps": 36.5,
+      "ok": 1476,
+      "errors": 24,
+      "distinct_pids": 4,
+      "latency_ms": {
+        "min": 66.83,
+        "p50": 1361.75,
+        "p90": 5589.42,
+        "p95": 7661.69,
+        "p99": 31071.94,
+        "max": 40888.46,
+        "mean": 2579.13
+      },
+      "pid_distribution": {
+        "28220": 730,
+        "29564": 447,
+        "21000": 287,
+        "28344": 12
+      },
+      "transport_errors": {
+        "ReadTimeout": 24
+      },
+      "workers_per_pod": 4,
+      "total_worker_processes": 4,
+      "platform": "Windows",
+      "server": "uvicorn --workers 4 (Windows; Gunicorn unavailable)"
+    },
+    {
+      "endpoint": "/async-io",
+      "pods": 2,
+      "concurrency": 50,
+      "requests": 1500,
+      "wall_time_s": 12.904,
+      "throughput_rps": 116.2,
+      "ok": 1500,
+      "errors": 0,
+      "distinct_pids": 8,
+      "latency_ms": {
+        "min": 79.71,
+        "p50": 326.61,
+        "p90": 782.41,
+        "p95": 1014.02,
+        "p99": 1528.75,
+        "max": 2456.86,
+        "mean": 417.09
+      },
+      "pid_distribution": {
+        "29204": 272,
+        "29052": 260,
+        "22764": 325,
+        "13116": 266,
+        "19660": 123,
+        "26160": 164,
+        "23740": 89,
+        "19836": 1
+      },
+      "transport_errors": {},
+      "workers_per_pod": 4,
+      "total_worker_processes": 8,
+      "platform": "Windows",
+      "server": "uvicorn --workers 4 (Windows; Gunicorn unavailable)"
+    },
+    {
+      "endpoint": "/async-io",
+      "pods": 2,
+      "concurrency": 100,
+      "requests": 1500,
+      "wall_time_s": 42.078,
+      "throughput_rps": 35.6,
+      "ok": 1492,
+      "errors": 8,
+      "distinct_pids": 8,
+      "latency_ms": {
+        "min": 89.31,
+        "p50": 645.53,
+        "p90": 1849.18,
+        "p95": 2417.55,
+        "p99": 11916.64,
+        "max": 30509.0,
+        "mean": 1058.71
+      },
+      "pid_distribution": {
+        "22764": 432,
+        "23740": 171,
+        "19660": 369,
+        "26160": 47,
+        "29052": 227,
+        "13116": 115,
+        "29204": 95,
+        "19836": 36
+      },
+      "transport_errors": {
+        "ReadTimeout": 8
+      },
+      "workers_per_pod": 4,
+      "total_worker_processes": 8,
+      "platform": "Windows",
+      "server": "uvicorn --workers 4 (Windows; Gunicorn unavailable)"
+    },
+    {
+      "endpoint": "/async-io",
+      "pods": 2,
+      "concurrency": 200,
+      "requests": 1500,
+      "wall_time_s": 44.491,
+      "throughput_rps": 33.7,
+      "ok": 1497,
+      "errors": 3,
+      "distinct_pids": 8,
+      "latency_ms": {
+        "min": 139.84,
+        "p50": 1611.47,
+        "p90": 4833.86,
+        "p95": 6321.55,
+        "p99": 10726.9,
+        "max": 32797.76,
+        "mean": 2230.37
+      },
+      "pid_distribution": {
+        "19660": 251,
+        "22764": 245,
+        "29204": 238,
+        "19836": 252,
+        "29052": 165,
+        "26160": 85,
+        "23740": 212,
+        "13116": 49
+      },
+      "transport_errors": {
+        "ReadTimeout": 3
+      },
+      "workers_per_pod": 4,
+      "total_worker_processes": 8,
+      "platform": "Windows",
+      "server": "uvicorn --workers 4 (Windows; Gunicorn unavailable)"
+    }
+  ]
+}
