@@ -1,0 +1,98 @@
+{
+  "meta": {
+    "requests": 10000,
+    "concurrency": 100,
+    "endpoint": "/cpu",
+    "slim_pods": 4,
+    "fat_pods": 1,
+    "fat_workers": 4,
+    "base_port": 9300,
+    "out": "research/data"
+  },
+  "results": [
+    {
+      "endpoint": "/cpu",
+      "pods": 4,
+      "concurrency": 100,
+      "requests": 10000,
+      "wall_time_s": 40.32,
+      "throughput_rps": 248.0,
+      "ok": 10000,
+      "errors": 0,
+      "distinct_pids": 4,
+      "latency_ms": {
+        "min": 61.81,
+        "p50": 296.3,
+        "p90": 798.12,
+        "p95": 1026.77,
+        "p99": 1524.64,
+        "max": 2918.33,
+        "mean": 389.31
+      },
+      "pid_distribution": {
+        "14540": 2500,
+        "4664": 2500,
+        "19344": 2500,
+        "28276": 2500
+      },
+      "transport_errors": {},
+      "wall_clock_s": 40.72,
+      "architecture": "A_slim_4pods_x1worker",
+      "pod_specs": [
+        {
+          "port": 9300,
+          "workers": 1
+        },
+        {
+          "port": 9301,
+          "workers": 1
+        },
+        {
+          "port": 9302,
+          "workers": 1
+        },
+        {
+          "port": 9303,
+          "workers": 1
+        }
+      ],
+      "total_worker_processes": 4
+    },
+    {
+      "endpoint": "/cpu",
+      "pods": 1,
+      "concurrency": 100,
+      "requests": 10000,
+      "wall_time_s": 25.151,
+      "throughput_rps": 397.6,
+      "ok": 10000,
+      "errors": 0,
+      "distinct_pids": 4,
+      "latency_ms": {
+        "min": 19.05,
+        "p50": 168.74,
+        "p90": 569.76,
+        "p95": 749.85,
+        "p99": 1144.99,
+        "max": 2118.63,
+        "mean": 246.91
+      },
+      "pid_distribution": {
+        "29324": 4462,
+        "24780": 2218,
+        "7400": 1698,
+        "27236": 1622
+      },
+      "transport_errors": {},
+      "wall_clock_s": 25.45,
+      "architecture": "B_fat_1pod_x4workers",
+      "pod_specs": [
+        {
+          "port": 9400,
+          "workers": 4
+        }
+      ],
+      "total_worker_processes": 4
+    }
+  ]
+}

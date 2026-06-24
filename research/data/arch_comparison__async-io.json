@@ -1,0 +1,100 @@
+{
+  "meta": {
+    "requests": 10000,
+    "concurrency": 100,
+    "endpoint": "/async-io",
+    "slim_pods": 4,
+    "fat_pods": 1,
+    "fat_workers": 4,
+    "base_port": 9300,
+    "out": "research/data"
+  },
+  "results": [
+    {
+      "endpoint": "/async-io",
+      "pods": 4,
+      "concurrency": 100,
+      "requests": 10000,
+      "wall_time_s": 51.753,
+      "throughput_rps": 193.2,
+      "ok": 9999,
+      "errors": 1,
+      "distinct_pids": 4,
+      "latency_ms": {
+        "min": 94.12,
+        "p50": 377.48,
+        "p90": 999.2,
+        "p95": 1272.78,
+        "p99": 2015.49,
+        "max": 5160.6,
+        "mean": 503.96
+      },
+      "pid_distribution": {
+        "17368": 2499,
+        "29576": 2500,
+        "29408": 2500,
+        "28620": 2500
+      },
+      "transport_errors": {
+        "RemoteProtocolError": 1
+      },
+      "wall_clock_s": 52.33,
+      "architecture": "A_slim_4pods_x1worker",
+      "pod_specs": [
+        {
+          "port": 9300,
+          "workers": 1
+        },
+        {
+          "port": 9301,
+          "workers": 1
+        },
+        {
+          "port": 9302,
+          "workers": 1
+        },
+        {
+          "port": 9303,
+          "workers": 1
+        }
+      ],
+      "total_worker_processes": 4
+    },
+    {
+      "endpoint": "/async-io",
+      "pods": 1,
+      "concurrency": 100,
+      "requests": 10000,
+      "wall_time_s": 87.111,
+      "throughput_rps": 114.8,
+      "ok": 10000,
+      "errors": 0,
+      "distinct_pids": 4,
+      "latency_ms": {
+        "min": 74.87,
+        "p50": 584.27,
+        "p90": 1937.42,
+        "p95": 2559.53,
+        "p99": 4045.43,
+        "max": 9231.62,
+        "mean": 857.98
+      },
+      "pid_distribution": {
+        "23008": 2280,
+        "29680": 2957,
+        "24172": 4076,
+        "21764": 687
+      },
+      "transport_errors": {},
+      "wall_clock_s": 87.49,
+      "architecture": "B_fat_1pod_x4workers",
+      "pod_specs": [
+        {
+          "port": 9400,
+          "workers": 4
+        }
+      ],
+      "total_worker_processes": 4
+    }
+  ]
+}

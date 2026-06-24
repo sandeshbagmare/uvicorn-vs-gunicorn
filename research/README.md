@@ -13,6 +13,7 @@
 > **Last run:** 2026-06-24 · Windows 11 · 8 CPUs · Python 3.13.12 · FastAPI 0.115.6 · Uvicorn 0.34.0`[standard]`
 >
 > **📚 Companion articles in this folder (every line individually sourced):**
+> - [**Slim pods (Uvicorn) vs Fat pod (Gunicorn) — a 10,000-request A/B experiment**](slim-vs-fat-10k-experiment.md) — measured latency for "4 pods × 1 worker" vs "1 pod × 4 Gunicorn workers."
 > - [**Why in-pod Gunicorn workers are discouraged on Kubernetes**](why-not-gunicorn-workers-on-kubernetes.md) — the autoscaler/OOM/health-check reasons, with the counter-arguments.
 > - [**Sourced Edition — core Uvicorn-vs-Gunicorn claims, line by line**](sourced-edition-core-claims.md) — each claim tagged with an inline `[S#]` you can click to verify.
 > - [**Related articles & further reading**](related-articles.md) — curated sources, labelled by what they back and how much to trust them.
@@ -219,10 +220,12 @@ plus probes, graceful drain, topology spread, and a PodDisruptionBudget.
 | Path | What it is |
 |---|---|
 | [`README.md`](README.md) | This document — the "N pods × 4 workers" latency research write-up |
+| [`slim-vs-fat-10k-experiment.md`](slim-vs-fat-10k-experiment.md) | **Experiment:** 10k-request A/B — 4 slim Uvicorn pods vs 1 fat Gunicorn pod, measured latency |
 | [`why-not-gunicorn-workers-on-kubernetes.md`](why-not-gunicorn-workers-on-kubernetes.md) | **Article:** why in-pod Gunicorn workers are discouraged on K8s — every line sourced |
 | [`sourced-edition-core-claims.md`](sourced-edition-core-claims.md) | **Article:** the core Uvicorn-vs-Gunicorn claims, each line with an inline `[S#]` source |
 | [`related-articles.md`](related-articles.md) | **Reading list:** curated sources, each labelled by what it backs and its trust level |
 | [`scripts/cluster_emulation.py`](scripts/cluster_emulation.py) | Boots N pods × M workers locally, sweeps load, measures latency |
+| [`scripts/arch_comparison.py`](scripts/arch_comparison.py) | A/B harness: slim pods vs fat pod over a fixed request count (the 10k experiment) |
 | [`scripts/latency_model.py`](scripts/latency_model.py) | M/M/c queueing model; predicts latency for any pods/load |
 | [`scripts/k8s_loadtest.sh`](scripts/k8s_loadtest.sh) | Drives the real cluster at 1→4 pods, captures ground-truth JSON |
 | [`manifests/k8s-gunicorn-4workers.yaml`](manifests/k8s-gunicorn-4workers.yaml) | Deployment + Service + HPA + PDB for the scenario |
@@ -230,6 +233,8 @@ plus probes, graceful drain, topology spread, and a PodDisruptionBudget.
 | [`data/emulation__cpu.json`](data/emulation__cpu.json) | Measured emulation data (CPU-bound) |
 | [`data/model_predictions.json`](data/model_predictions.json) | Model output (CPU-bound regime) |
 | [`data/model_predictions_io.json`](data/model_predictions_io.json) | Model output (async I/O regime) |
+| [`data/arch_comparison__async-io.json`](data/arch_comparison__async-io.json) | 10k-request A/B results (async I/O) |
+| [`data/arch_comparison__cpu.json`](data/arch_comparison__cpu.json) | 10k-request A/B results (CPU-bound) |
 
 ---
 
