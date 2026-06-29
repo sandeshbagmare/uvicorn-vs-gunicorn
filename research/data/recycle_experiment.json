@@ -1,0 +1,104 @@
+{
+  "params": {
+    "requests": 400,
+    "concurrency": 2,
+    "boot_delay_s": 1.2,
+    "leak_kb_per_request": 40,
+    "note": "Gunicorn N/A on Windows; uvicorn --limit-max-requests is the same idea."
+  },
+  "results": [
+    {
+      "label": "baseline-norecycle",
+      "requests": 400,
+      "ok": 400,
+      "failed": 0,
+      "failed_pct": 0.0,
+      "distinct_pids": 2,
+      "distinct_boot_ids": 2,
+      "recycles": 0,
+      "longest_fail_burst": 0,
+      "p50_ms": 2.7,
+      "p95_ms": 17.6,
+      "p99_ms": 20.3,
+      "max_ms": 26.2,
+      "slow_over_1s": 0,
+      "rss_min_max_mb": [
+        54.0,
+        62.5
+      ],
+      "fail_kinds": {}
+    },
+    {
+      "label": "single-worker-death",
+      "requests": 400,
+      "ok": 126,
+      "failed": 274,
+      "failed_pct": 68.5,
+      "distinct_pids": 1,
+      "distinct_boot_ids": 1,
+      "recycles": 0,
+      "longest_fail_burst": 273,
+      "p50_ms": 3.3,
+      "p95_ms": 16.1,
+      "p99_ms": 18.0,
+      "max_ms": 25.6,
+      "slow_over_1s": 0,
+      "rss_min_max_mb": [
+        50.5,
+        59.9
+      ],
+      "fail_kinds": {
+        "ConnectionAbortedError": 1,
+        "URLError": 273
+      }
+    },
+    {
+      "label": "sync-recycle",
+      "requests": 400,
+      "ok": 394,
+      "failed": 6,
+      "failed_pct": 1.5,
+      "distinct_pids": 6,
+      "distinct_boot_ids": 6,
+      "recycles": 4,
+      "longest_fail_burst": 2,
+      "p50_ms": 4.1,
+      "p95_ms": 24.3,
+      "p99_ms": 1515.5,
+      "max_ms": 4956.0,
+      "slow_over_1s": 6,
+      "rss_min_max_mb": [
+        53.9,
+        57.1
+      ],
+      "fail_kinds": {
+        "ConnectionAbortedError": 2,
+        "ConnectionResetError": 4
+      }
+    },
+    {
+      "label": "jitter-recycle",
+      "requests": 400,
+      "ok": 398,
+      "failed": 2,
+      "failed_pct": 0.5,
+      "distinct_pids": 6,
+      "distinct_boot_ids": 6,
+      "recycles": 4,
+      "longest_fail_burst": 1,
+      "p50_ms": 5.1,
+      "p95_ms": 16.9,
+      "p99_ms": 27.9,
+      "max_ms": 1964.7,
+      "slow_over_1s": 4,
+      "rss_min_max_mb": [
+        54.0,
+        58.9
+      ],
+      "fail_kinds": {
+        "URLError": 1,
+        "ConnectionResetError": 1
+      }
+    }
+  ]
+}

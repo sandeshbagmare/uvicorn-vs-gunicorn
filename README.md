@@ -117,6 +117,16 @@ python benchmarks\loadtest.py --url http://127.0.0.1:8003 --endpoint /cpu --requ
 - **Researching cluster latency?** [research/](research/) — "what is the latency of N pods × 4 workers
   (Gunicorn) on Kubernetes?", measured by an emulation harness, predicted by a queueing model, and
   reproducible on a real cluster via the included manifests.
+- **Hitting memory growth / hard restarts / 529-530?** [research/memory-leaks-and-worker-recycling.md](research/memory-leaks-and-worker-recycling.md)
+  — a measured study of whether LangGraph+PostgresSaver actually leaks, how Gunicorn `max_requests`
+  (and Uvicorn `--limit-max-requests`) recycle memory, and why "one worker per pod × two pods" makes both
+  restart at once → 529/530, with the fix (jitter + replicas + readiness + a `kubectl rollout restart` CronJob).
+- **One Uvicorn worker per pod, no Gunicorn — how does Kubernetes recycle it?** [research/recycling-one-uvicorn-worker-per-pod-on-kubernetes.md](research/recycling-one-uvicorn-worker-per-pod-on-kubernetes.md)
+  — Kubernetes as the process manager: the Gunicorn→K8s knob-for-knob map, the **CrashLoopBackOff** trap with
+  `--limit-max-requests`, and a scheduled `kubectl rollout restart` as the native `max_requests` (full manifest included).
+- **"Is that actually the industry standard?"** [research/is-one-process-per-pod-industry-standard.md](research/is-one-process-per-pod-industry-standard.md)
+  — the claim proven with primary-source quotes from **five independent authorities** (Kubernetes, Google Cloud,
+  AWS, the Twelve-Factor App, FastAPI), with an honest grading of what's settled vs common practice.
 - Start with the **TL;DR** and **30-second mental model** in [docs/uvicorn-vs-gunicorn.md](docs/uvicorn-vs-gunicorn.md).
 - Score your own situation with [docs/decision-matrix.md](docs/decision-matrix.md).
 - Then run the benchmarks above and paste your numbers into the article's *Benchmark results* section.

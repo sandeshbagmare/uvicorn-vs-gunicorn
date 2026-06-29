@@ -15,6 +15,9 @@
 > **📚 Companion articles in this folder (every line individually sourced):**
 > - [**Slim pods (Uvicorn) vs Fat pod (Gunicorn) — a 10,000-request A/B experiment**](slim-vs-fat-10k-experiment.md) — measured latency for "4 pods × 1 worker" vs "1 pod × 4 Gunicorn workers."
 > - [**Why in-pod Gunicorn workers are discouraged on Kubernetes**](why-not-gunicorn-workers-on-kubernetes.md) — the autoscaler/OOM/health-check reasons, with the counter-arguments.
+> - [**Memory leaks & worker recycling — `max_requests` vs Kubernetes (one worker per pod)**](memory-leaks-and-worker-recycling.md) — does LangGraph+PostgresSaver really leak (measured), how `max_requests` frees memory, and why "1 worker/pod × 2 pods" recycling causes 529/530 + how to fix it.
+> - [**Recycling one Uvicorn worker per pod — the Kubernetes way (no Gunicorn)**](recycling-one-uvicorn-worker-per-pod-on-kubernetes.md) — when Kubernetes is your process manager: the Gunicorn→K8s translation, the CrashLoopBackOff trap, and a `kubectl rollout restart` CronJob as the native `max_requests`.
+> - [**Is "one process per pod" really the industry standard? — the proof**](is-one-process-per-pod-industry-standard.md) — the claim proven with primary sources from five independent authorities (Kubernetes, Google Cloud, AWS, the Twelve-Factor App, FastAPI), each quoted, honestly graded.
 > - [**Sourced Edition — core Uvicorn-vs-Gunicorn claims, line by line**](sourced-edition-core-claims.md) — each claim tagged with an inline `[S#]` you can click to verify.
 > - [**Related articles & further reading**](related-articles.md) — curated sources, labelled by what they back and how much to trust them.
 
@@ -222,6 +225,12 @@ plus probes, graceful drain, topology spread, and a PodDisruptionBudget.
 | [`README.md`](README.md) | This document — the "N pods × 4 workers" latency research write-up |
 | [`slim-vs-fat-10k-experiment.md`](slim-vs-fat-10k-experiment.md) | **Experiment:** 10k-request A/B — 4 slim Uvicorn pods vs 1 fat Gunicorn pod, measured latency |
 | [`why-not-gunicorn-workers-on-kubernetes.md`](why-not-gunicorn-workers-on-kubernetes.md) | **Article:** why in-pod Gunicorn workers are discouraged on K8s — every line sourced |
+| [`memory-leaks-and-worker-recycling.md`](memory-leaks-and-worker-recycling.md) | **Article + experiment:** LangGraph+PostgresSaver memory (measured), how `max_requests` frees memory, and fixing the synchronized "both pods recycle at once" 529/530 |
+| [`recycling-one-uvicorn-worker-per-pod-on-kubernetes.md`](recycling-one-uvicorn-worker-per-pod-on-kubernetes.md) | **Article:** recycling a single Uvicorn worker per pod with **Kubernetes** as the manager — Gunicorn→K8s map, the CrashLoopBackOff trap, scheduled `rollout restart` |
+| [`manifests/k8s-uvicorn-1worker-recycle.yaml`](manifests/k8s-uvicorn-1worker-recycle.yaml) | **Manifest:** one-uvicorn-worker-per-pod Deployment + Service + HPA + PDB + recycle CronJob (+RBAC), no Gunicorn |
+| [`is-one-process-per-pod-industry-standard.md`](is-one-process-per-pod-industry-standard.md) | **Proof:** "one process per pod, cluster manages the rest" backed by Kubernetes, Google Cloud, AWS, Twelve-Factor, FastAPI — quoted + graded |
+| [`scripts/langgraph_memory_probe.py`](scripts/langgraph_memory_probe.py) | Drives LangGraph+PostgresSaver and samples RSS/heap/threads/objects per request — leak vs plateau verdict |
+| [`scripts/recycle_app.py`](scripts/recycle_app.py) · [`recycle_loadtest.py`](scripts/recycle_loadtest.py) · [`run_recycle_experiment.py`](scripts/run_recycle_experiment.py) | The worker-recycling A/B: no-recycle / 1-worker-death / synchronized / jittered, with latency + RSS sawtooth |
 | [`sourced-edition-core-claims.md`](sourced-edition-core-claims.md) | **Article:** the core Uvicorn-vs-Gunicorn claims, each line with an inline `[S#]` source |
 | [`related-articles.md`](related-articles.md) | **Reading list:** curated sources, each labelled by what it backs and its trust level |
 | [`scripts/cluster_emulation.py`](scripts/cluster_emulation.py) | Boots N pods × M workers locally, sweeps load, measures latency |

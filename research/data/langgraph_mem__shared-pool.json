@@ -1,0 +1,335 @@
+{
+  "config": "shared-pool",
+  "uri": "127.0.0.1:5432/lg_memtest",
+  "requests": 3000,
+  "elapsed_s": 40.5,
+  "rps": 74.0,
+  "verdict": {
+    "requests": 2999,
+    "rss_growth_mb": 2.78,
+    "rss_growth_after_gc_mb": 2.78,
+    "heap_growth_mb": 0.07,
+    "thread_delta": 0,
+    "gc_object_delta": 10,
+    "approx_kb_per_request": 0.93,
+    "classification": "STABLE (no material growth over this run)"
+  },
+  "series": [
+    {
+      "request": 1,
+      "rss_mb": 85.93,
+      "rss_after_gc_mb": 85.93,
+      "heap_cur_mb": 0.2,
+      "heap_peak_mb": 0.32,
+      "threads": 5,
+      "gc_objects": 99535,
+      "gc_collected": 30
+    },
+    {
+      "request": 100,
+      "rss_mb": 87.31,
+      "rss_after_gc_mb": 87.31,
+      "heap_cur_mb": 0.24,
+      "heap_peak_mb": 1.0,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 90
+    },
+    {
+      "request": 200,
+      "rss_mb": 88.33,
+      "rss_after_gc_mb": 88.33,
+      "heap_cur_mb": 0.25,
+      "heap_peak_mb": 1.04,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 300,
+      "rss_mb": 88.4,
+      "rss_after_gc_mb": 88.4,
+      "heap_cur_mb": 0.26,
+      "heap_peak_mb": 1.05,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 1680
+    },
+    {
+      "request": 400,
+      "rss_mb": 88.42,
+      "rss_after_gc_mb": 88.42,
+      "heap_cur_mb": 0.26,
+      "heap_peak_mb": 1.06,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 500,
+      "rss_mb": 88.44,
+      "rss_after_gc_mb": 88.44,
+      "heap_cur_mb": 0.26,
+      "heap_peak_mb": 1.06,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 600,
+      "rss_mb": 87.76,
+      "rss_after_gc_mb": 87.76,
+      "heap_cur_mb": 0.26,
+      "heap_peak_mb": 1.06,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 1680
+    },
+    {
+      "request": 700,
+      "rss_mb": 87.78,
+      "rss_after_gc_mb": 87.78,
+      "heap_cur_mb": 0.26,
+      "heap_peak_mb": 1.06,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 0
+    },
+    {
+      "request": 800,
+      "rss_mb": 87.78,
+      "rss_after_gc_mb": 87.78,
+      "heap_cur_mb": 0.26,
+      "heap_peak_mb": 1.06,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 900,
+      "rss_mb": 87.66,
+      "rss_after_gc_mb": 87.66,
+      "heap_cur_mb": 0.26,
+      "heap_peak_mb": 1.06,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 1000,
+      "rss_mb": 87.71,
+      "rss_after_gc_mb": 87.71,
+      "heap_cur_mb": 0.26,
+      "heap_peak_mb": 1.06,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 1100,
+      "rss_mb": 87.72,
+      "rss_after_gc_mb": 87.72,
+      "heap_cur_mb": 0.26,
+      "heap_peak_mb": 1.06,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 1200,
+      "rss_mb": 87.79,
+      "rss_after_gc_mb": 87.79,
+      "heap_cur_mb": 0.26,
+      "heap_peak_mb": 1.06,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 0
+    },
+    {
+      "request": 1300,
+      "rss_mb": 87.84,
+      "rss_after_gc_mb": 87.84,
+      "heap_cur_mb": 0.26,
+      "heap_peak_mb": 1.06,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 1400,
+      "rss_mb": 87.87,
+      "rss_after_gc_mb": 87.87,
+      "heap_cur_mb": 0.26,
+      "heap_peak_mb": 1.06,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 0
+    },
+    {
+      "request": 1500,
+      "rss_mb": 88.5,
+      "rss_after_gc_mb": 88.5,
+      "heap_cur_mb": 0.26,
+      "heap_peak_mb": 1.06,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 1620
+    },
+    {
+      "request": 1600,
+      "rss_mb": 88.67,
+      "rss_after_gc_mb": 88.67,
+      "heap_cur_mb": 0.26,
+      "heap_peak_mb": 1.07,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 1700,
+      "rss_mb": 88.67,
+      "rss_after_gc_mb": 88.67,
+      "heap_cur_mb": 0.27,
+      "heap_peak_mb": 1.07,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 0
+    },
+    {
+      "request": 1800,
+      "rss_mb": 88.67,
+      "rss_after_gc_mb": 88.67,
+      "heap_cur_mb": 0.27,
+      "heap_peak_mb": 1.07,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 0
+    },
+    {
+      "request": 1900,
+      "rss_mb": 88.67,
+      "rss_after_gc_mb": 88.67,
+      "heap_cur_mb": 0.27,
+      "heap_peak_mb": 1.07,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 2000,
+      "rss_mb": 88.67,
+      "rss_after_gc_mb": 88.67,
+      "heap_cur_mb": 0.27,
+      "heap_peak_mb": 1.07,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 2100,
+      "rss_mb": 88.67,
+      "rss_after_gc_mb": 88.67,
+      "heap_cur_mb": 0.27,
+      "heap_peak_mb": 1.07,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 0
+    },
+    {
+      "request": 2200,
+      "rss_mb": 88.7,
+      "rss_after_gc_mb": 88.7,
+      "heap_cur_mb": 0.27,
+      "heap_peak_mb": 1.07,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 0
+    },
+    {
+      "request": 2300,
+      "rss_mb": 88.7,
+      "rss_after_gc_mb": 88.7,
+      "heap_cur_mb": 0.27,
+      "heap_peak_mb": 1.07,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 2400,
+      "rss_mb": 88.7,
+      "rss_after_gc_mb": 88.7,
+      "heap_cur_mb": 0.27,
+      "heap_peak_mb": 1.07,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 2500,
+      "rss_mb": 88.71,
+      "rss_after_gc_mb": 88.71,
+      "heap_cur_mb": 0.27,
+      "heap_peak_mb": 1.07,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 2600,
+      "rss_mb": 88.71,
+      "rss_after_gc_mb": 88.71,
+      "heap_cur_mb": 0.27,
+      "heap_peak_mb": 1.07,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 2700,
+      "rss_mb": 88.71,
+      "rss_after_gc_mb": 88.71,
+      "heap_cur_mb": 0.27,
+      "heap_peak_mb": 1.07,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 2800,
+      "rss_mb": 88.71,
+      "rss_after_gc_mb": 88.71,
+      "heap_cur_mb": 0.27,
+      "heap_peak_mb": 1.07,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 2900,
+      "rss_mb": 88.71,
+      "rss_after_gc_mb": 88.71,
+      "heap_cur_mb": 0.27,
+      "heap_peak_mb": 1.07,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 30
+    },
+    {
+      "request": 3000,
+      "rss_mb": 88.71,
+      "rss_after_gc_mb": 88.71,
+      "heap_cur_mb": 0.27,
+      "heap_peak_mb": 1.07,
+      "threads": 5,
+      "gc_objects": 99545,
+      "gc_collected": 0
+    }
+  ],
+  "langgraph": {
+    "langgraph": "1.2.4",
+    "langgraph-checkpoint": "4.1.1",
+    "langgraph-checkpoint-postgres": "3.1.0",
+    "psycopg": "3.3.4"
+  }
+}

@@ -1,0 +1,175 @@
+# One Uvicorn worker per pod, recycled the Kubernetes-native way (NO Gunicorn).
+#
+# This is the "official" shape: ONE process per container, and the CLUSTER does
+# replication, restarts and recycling — not an in-pod process manager.
+#
+#   uvicorn (1 worker)  ==  one container  ==  (the only process in) one pod
+#   "multiple pods"     ==  Deployment .spec.replicas   (the ReplicaSet controller maintains them)
+#   "restart a crashed/exited worker"  ==  kubelet, via restartPolicy: Always (default)
+#   "max_requests recycle for memory"  ==  a scheduled `kubectl rollout restart` (rolling, staggered)
+#   "max_requests_jitter (de-sync)"    ==  a rolling restart is inherently staggered (maxUnavailable/maxSurge)
+#
+# Why a scheduled rollout instead of uvicorn --limit-max-requests:
+#   A single uvicorn worker that self-exits on --limit-max-requests IS restarted by
+#   the kubelet — but the kubelet cannot tell a deliberate recycle from a crash, so
+#   frequent self-exits accrue CrashLoopBackOff (10s..300s) and HURT you. The backoff
+#   only resets after 10 min of clean running. A `kubectl rollout restart` is understood
+#   as an intentional, graceful, rolling replacement → no CrashLoopBackOff, and it
+#   staggers across pods for free. See research/recycling-one-uvicorn-worker-per-pod-on-kubernetes.md
+#
+# Apply:  kubectl apply -f research/manifests/k8s-uvicorn-1worker-recycle.yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uvicorn-slim
+  labels: { app: uvicorn-slim }
+spec:
+  replicas: 3                                   # >=3 so one pod recycling is <=33% of capacity, never 50%
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0                          # never drop below desired capacity during a recycle
+      maxSurge: 1                                # bring up a fresh pod before removing an old one
+  selector:
+    matchLabels: { app: uvicorn-slim }
+  template:
+    metadata:
+      labels: { app: uvicorn-slim }
+    spec:
+      terminationGracePeriodSeconds: 40
+      topologySpreadConstraints:                 # spread pods across nodes for real HA
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app: uvicorn-slim }
+      containers:
+        - name: app
+          image: REPLACE_ME/uvicorn-vs-gunicorn:latest    # build from docker/Dockerfile
+          # ONE uvicorn worker. No Gunicorn, no --workers. The cluster is the manager.
+          command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+          # --- OPTIONAL in-pod request-count recycle (NOT recommended as the primary) ---
+          # Only safe if N is large enough that recycles are > ~10 min apart (else CrashLoopBackOff).
+          # Per-pod jitter via python (portable; $RANDOM is bash-only) so pods de-sync:
+          # command: ["/bin/sh","-c"]
+          # args:
+          #   - |
+          #     N=$(python -c "import random;print(40000+random.randint(0,8000))")
+          #     exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --limit-max-requests "$N"
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: "1"
+              memory: "256Mi"                     # ~= measured steady-state plateau of YOUR app
+            limits:
+              memory: "512Mi"                     # plateau + sawtooth headroom; over this = OOMKill (SIGKILL)
+          # readiness gates Service traffic: a (re)starting pod is removed from endpoints automatically.
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 5
+            failureThreshold: 2
+          # liveness restarts only a genuinely-stuck pod. Keep it conservative (don't let "busy" look "dead").
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 15
+            failureThreshold: 4
+          # startup probe gives a slow LangGraph import + checkpointer.setup() time before liveness starts.
+          startupProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 5
+            failureThreshold: 30                  # up to ~150s for first boot
+          lifecycle:
+            preStop:
+              exec: { command: ["sh", "-c", "sleep 5"] }   # let the Service stop routing before SIGTERM
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: uvicorn-slim
+  labels: { app: uvicorn-slim }
+spec:
+  selector: { app: uvicorn-slim }
+  ports:
+    - { name: http, port: 80, targetPort: 8000 }
+  type: ClusterIP
+---
+# HPA scales the NUMBER OF PODS (uvicorn doesn't scale anything — the cluster does).
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: uvicorn-slim
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: uvicorn-slim }
+  minReplicas: 3
+  maxReplicas: 12
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }
+---
+# Protect capacity during node drains/upgrades — never let all pods go at once.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: uvicorn-slim
+spec:
+  minAvailable: 50%
+  selector:
+    matchLabels: { app: uvicorn-slim }
+---
+# THE "max_requests" EQUIVALENT, cluster-side: a scheduled rolling restart.
+# Rolling => staggered (maxUnavailable: 0 / maxSurge: 1) => no shared outage, no CrashLoopBackOff.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: uvicorn-slim-recycle
+spec:
+  schedule: "17 */8 * * *"                        # every 8h, off the :00 mark to avoid herding
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 600
+      backoffLimit: 1
+      template:
+        spec:
+          serviceAccountName: uvicorn-slim-recycler
+          restartPolicy: Never
+          containers:
+            - name: kubectl
+              image: bitnami/kubectl
+              command:
+                - /bin/sh
+                - -c
+                - >
+                  kubectl rollout restart deployment/uvicorn-slim &&
+                  kubectl rollout status  deployment/uvicorn-slim --timeout=540s
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: uvicorn-slim-recycler
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: uvicorn-slim-recycler
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["uvicorn-slim"]
+    verbs: ["get", "list", "watch", "patch"]      # patch = the restart annotation; get/list/watch = rollout status
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: uvicorn-slim-recycler
+subjects:
+  - kind: ServiceAccount
+    name: uvicorn-slim-recycler
+roleRef:
+  kind: Role
+  name: uvicorn-slim-recycler
+  apiGroup: rbac.authorization.k8s.io
